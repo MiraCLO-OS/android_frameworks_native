@@ -1489,8 +1489,11 @@ void SurfaceFlinger::setDesiredMode(display::DisplayModeRequest desiredMode) {
         return;
     }
     const auto display = getDisplayDeviceLocked(displayId);
-    if (mDeferRefreshRateWhenOff && display->getPowerMode() == hal::PowerMode::OFF) {
-        ALOGI("%s: deferring because display is powered off", __func__);
+    if (mDeferRefreshRateWhenOff &&
+        (display->getPowerMode() == hal::PowerMode::OFF ||
+         display->getPowerMode() == hal::PowerMode::DOZE)) {
+        ALOGI("%s: deferring because display is off/dozing (powerMode=%d): %s", __func__,
+              static_cast<int>(display->getPowerMode()), to_string(mode).c_str());
         mLastActiveMode = mode;
         return;
     }
@@ -6998,6 +7001,17 @@ SurfaceFlinger::setPhysicalDisplayPowerModeAsync(const sp<DisplayDevice>& displa
                                                mScheduler->resyncToHardwareVsync(displayId,
                                                                                  kAllowToEnable,
                                                                                  activeMode.get());
+                                           }
+                                           ftl::FakeGuard guard(mStateLock);
+                                           if (mode == hal::PowerMode::ON && mLastActiveMode) {
+                                               ALOGI("Deferred active mode change pending, "
+                                                     "applying now (DOZE->ON)");
+                                               const auto deferredMode = *mLastActiveMode;
+                                               mLastActiveMode = std::nullopt;
+                                               setDesiredMode({
+                                                       .mode = deferredMode,
+                                                       .emitEvent = true,
+                                                       .force = true});
                                            }
                                        })};
     } else if (mode == hal::PowerMode::DOZE_SUSPEND) {
