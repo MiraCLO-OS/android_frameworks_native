@@ -227,8 +227,10 @@ public:
                                     uint32_t drawLayerStackId) override;
     uint32_t qtiGetLayerClass(std::string mName) override;
     void qtiSetVisibleLayerInfo(DisplayId displayId,
-                                    const char* name, int32_t sequence, Rect displayFrame) override;
+                                 const char* name, int32_t sequence, Rect displayFrame,
+                                 Rect sourceCrop, bool focused) override;
     bool qtiIsSmomoOptimalRefreshActive() override;
+    bool qtiIsLayerFocusedBasedOnPriority(int32_t priority) override;
 
     /*
      * Methods for Dolphin APIs
@@ -339,6 +341,8 @@ private:
         std::vector<std::string> layerName;
         std::vector<int32_t> layerSequence;
         std::map<std::string, std::pair<int32_t, int32_t>> layerDispFrame; //key -> (width, height)
+        std::map<std::string, std::pair<int32_t, int32_t>> layerSourceCrop; //key -> (width, height)
+        std::map<std::string, bool> layerFocused;
     };
     std::unordered_map<DisplayId, VisibleLayerInfo> mQtiVisibleLayerInfoMap;
 

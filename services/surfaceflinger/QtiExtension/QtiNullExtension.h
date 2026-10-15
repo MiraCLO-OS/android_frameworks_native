@@ -121,8 +121,10 @@ public:
                                     uint32_t drawLayerStackId) override;
     uint32_t qtiGetLayerClass(std::string mName) override;
     void qtiSetVisibleLayerInfo(DisplayId displayId,
-                                    const char* name, int32_t sequence, Rect displayFrame) override;
+                                    const char* name, int32_t sequence, Rect displayFrame,
+                                    Rect sourceCrop, bool focused) override;
     bool qtiIsSmomoOptimalRefreshActive() override;
+    bool qtiIsLayerFocusedBasedOnPriority(int32_t priority) override;
 
     /*
      * Methods for speculative fence

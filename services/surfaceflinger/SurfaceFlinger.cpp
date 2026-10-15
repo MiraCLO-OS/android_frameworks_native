@@ -19,7 +19,7 @@
  *
 // QTI_END: 2023-01-17: Display: sf: Introduce QTI Extensions in AOSP
 // QTI_BEGIN: 2025-04-11: Display: sf: update layer class setting with LayerFE objects
- * Copyright (c) 2023-2025 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // QTI_END: 2025-04-11: Display: sf: update layer class setting with LayerFE objects
 // QTI_BEGIN: 2023-01-17: Display: sf: Introduce QTI Extensions in AOSP
  * SPDX-License-Identifier: BSD-3-Clause-Clear
@@ -10209,7 +10209,10 @@ std::vector<std::pair<Layer*, LayerFE*>> SurfaceFlinger::addLayerSnapshotsToComp
 // QTI_END: 2025-04-11: Display: sf: update layer class setting with LayerFE objects
 // QTI_BEGIN: 2025-01-07: Display: sf: Update LayerFE's composition state before composition
                 snapshot->qtiIsSecureDisplay =  legacyLayer->qtiIsSecureDisplay();
-                snapshot->qtiIsSecureCamera = legacyLayer->qtiIsSecureCamera();
+                snapshot->qtiIsSecureCamera = (snapshot->externalTexture != nullptr)
+                        ? mQtiSFExtnIntf->qtiIsSecureCamera(
+                                  snapshot->externalTexture->getBuffer())
+                        : legacyLayer->qtiIsSecureCamera();
 // QTI_END: 2025-01-07: Display: sf: Update LayerFE's composition state before composition
                 layerFE->mSnapshot = std::move(snapshot);
                 refreshArgs.layers.push_back(layerFE);

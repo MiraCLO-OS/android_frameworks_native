@@ -171,12 +171,15 @@ uint32_t QtiNullExtension::qtiGetLayerClass(std::string mName) {
     return 0;
 }
 void QtiNullExtension::qtiSetVisibleLayerInfo(DisplayId displayId,
-                                                  const char* name,
-                                                  int32_t sequence,
-                                                  Rect displayFrame) {}
+                                                  const char* name, int32_t sequence, Rect displayFrame,
+                                                  Rect sourceCrop, bool focused) {}
 bool QtiNullExtension::qtiIsSmomoOptimalRefreshActive() {
     return false;
 }
+bool QtiNullExtension::qtiIsLayerFocusedBasedOnPriority(int32_t priority) {
+    return false;
+}
+
 
 /*
  * Methods for speculative fence

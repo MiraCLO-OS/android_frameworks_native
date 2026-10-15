@@ -19,7 +19,7 @@
  *
 // QTI_END: 2023-01-24: Display: sf: Add support for multiple displays
 // QTI_BEGIN: 2024-02-28: Display: sf: Add check for unknown dataspace
- * Copyright (c) 2023-2024 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) Qualcomm Technologies, Inc. and/or its subsidiaries.
 // QTI_END: 2024-02-28: Display: sf: Add check for unknown dataspace
 // QTI_BEGIN: 2023-01-24: Display: sf: Add support for multiple displays
  * SPDX-License-Identifier: BSD-3-Clause-Clear
@@ -1369,20 +1369,8 @@ void Layer::gatherBufferInfo() {
         {
             SFTRACE_NAME("getDataspace");
             err = mapper.getDataspace(mBufferInfo.mBuffer->getBuffer()->handle, &dataspace);
-// QTI_BEGIN: 2024-02-28: Display: sf: Add check for unknown dataspace
-            if (dataspace == ui::Dataspace::UNKNOWN) {
-// QTI_END: 2024-02-28: Display: sf: Add check for unknown dataspace
-// QTI_BEGIN: 2024-12-24: Display: SF: Reduce unknown dataspace log priority
-              ALOGV("%s: Received unknown dataspace from gralloc", __func__);
-// QTI_END: 2024-12-24: Display: SF: Reduce unknown dataspace log priority
-// QTI_BEGIN: 2024-02-28: Display: sf: Add check for unknown dataspace
-            }
-// QTI_END: 2024-02-28: Display: sf: Add check for unknown dataspace
         }
-// QTI_BEGIN: 2024-02-28: Display: sf: Add check for unknown dataspace
-        if ((err != OK || dataspace != mBufferInfo.mDataspace)
-            && dataspace != ui::Dataspace::UNKNOWN) {
-// QTI_END: 2024-02-28: Display: sf: Add check for unknown dataspace
+        if (err != OK || dataspace != mBufferInfo.mDataspace) {
             {
                 SFTRACE_NAME("setDataspace");
                 err = mapper.setDataspace(mBufferInfo.mBuffer->getBuffer()->handle,

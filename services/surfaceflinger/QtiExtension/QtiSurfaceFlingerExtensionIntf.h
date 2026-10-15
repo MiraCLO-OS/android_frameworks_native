@@ -162,8 +162,10 @@ public:
                                  uint32_t curLayerStackId, uint32_t drawLayerStackId) = 0;
     virtual uint32_t qtiGetLayerClass(std::string mName) = 0;
     virtual void qtiSetVisibleLayerInfo(DisplayId displayId,
-                                 const char* name, int32_t sequence, Rect displayFrame) = 0;
+                                 const char* name, int32_t sequence, Rect displayFrame,
+                                 Rect sourceCrop, bool focused) = 0;
     virtual bool qtiIsSmomoOptimalRefreshActive() = 0;
+    virtual bool qtiIsLayerFocusedBasedOnPriority(int32_t priority) = 0;
 
     /*
      * Methods for Dolphin APIs

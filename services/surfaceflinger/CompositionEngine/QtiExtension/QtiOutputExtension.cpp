@@ -8,6 +8,7 @@
 #include "../../QtiExtension/QtiExtensionContext.h"
 #include "aidl/android/hardware/graphics/common/DisplayDecorationSupport.h"
 #include "aidl/android/hardware/graphics/composer3/DisplayCapability.h"
+#include "../../Layer.h"
 
 #define LOG_TAG "QtiCompositionEngineExtension"
 #include <log/log.h>
@@ -150,8 +151,17 @@ void QtiOutputExtension::qtiGetVisibleLayerInfo(
         }
 
         for (auto* layer: output->getOutputLayersOrderedByZ()) {
+            const auto* state = layer->getLayerFE().getCompositionState();
+            if (!state) {
+                continue;
+            }
+
+            const auto* snapshot = static_cast<const surfaceflinger::frontend::LayerSnapshot*>(state);
+            const auto focused = sfext->qtiIsLayerFocusedBasedOnPriority(snapshot->frameRateSelectionPriority);
+
             sfext->qtiSetVisibleLayerInfo(*displayId, layer->getLayerFE().getDebugName(),
-                    layer->getLayerFE().getLayerId(), layer->getState().displayFrame);
+                    layer->getLayerFE().getLayerId(), layer->getState().displayFrame,
+                    snapshot->geomContentCrop, focused);
         }
     }
 }

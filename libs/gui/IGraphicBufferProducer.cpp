@@ -1053,6 +1053,14 @@ public:
 #endif
 
     status_t setPresentMode(int32_t mode) override { return mBase->setPresentMode(mode); }
+
+    status_t setProducerThrottlingEnabled(bool enabled) override {
+        return mBase->setProducerThrottlingEnabled(enabled);
+    }
+
+    status_t isProducerThrottlingEnabled(bool* outEnabled) const override {
+        return mBase->isProducerThrottlingEnabled(outEnabled);
+    }
 };
 
 IMPLEMENT_HYBRID_META_INTERFACE(GraphicBufferProducer,

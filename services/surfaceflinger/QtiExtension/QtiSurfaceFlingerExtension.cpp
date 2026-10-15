@@ -1471,6 +1471,10 @@ bool QtiSurfaceFlingerExtension::qtiIsSmomoOptimalRefreshActive() {
   return mQtiSmomoOptimalRefreshActive;
 }
 
+bool QtiSurfaceFlingerExtension::qtiIsLayerFocusedBasedOnPriority(int32_t priority) {
+    return Layer::isLayerFocusedBasedOnPriority(priority);
+}
+
 void QtiSurfaceFlingerExtension::qtiUpdateSmomoState() {
     SFTRACE_NAME("SmoMoUpdateState");
     Mutex::Autolock lock(mQtiFlinger->mStateLock);
@@ -1718,12 +1722,14 @@ bool QtiSurfaceFlingerExtension::qtiIsFrameEarly(uint32_t layerStackId, int sequ
 }
 
 void QtiSurfaceFlingerExtension::qtiSetVisibleLayerInfo(DisplayId displayId, const char* name,
-                                                        int32_t sequence, Rect displayFrame) {
+                                                        int32_t sequence, Rect displayFrame, Rect sourceCrop, bool focused) {
     auto& visibleLayerInfo = mQtiVisibleLayerInfoMap[displayId];
     visibleLayerInfo.layerName.push_back(name);
     visibleLayerInfo.layerSequence.push_back(sequence);
-    visibleLayerInfo.layerDispFrame[name] = std::make_pair(displayFrame.getWidth(),
-                                                        displayFrame.getHeight());
+    visibleLayerInfo.layerDispFrame[name] = std::make_pair(displayFrame.getWidth(), displayFrame.getHeight());
+    visibleLayerInfo.layerSourceCrop[name] = std::make_pair(sourceCrop.getWidth(), sourceCrop.getHeight());
+    visibleLayerInfo.layerFocused[name] = focused;
+
 }
 
 void QtiSurfaceFlingerExtension::qtiUpdateLayerState(int numLayers) {
@@ -1737,7 +1743,7 @@ void QtiSurfaceFlingerExtension::qtiUpdateLayerState(int numLayers) {
 #ifdef CONCURRENCY_DETECTION_CONFIG
         if (mSplitLayerExt && mQtiLayerExt) {
             if (VisibleLayerInfo.layerName.size() != 0) {
-                mQtiLayerExt->UpdateLayerState(VisibleLayerInfo.layerDispFrame);
+                mQtiLayerExt->UpdateLayerState(VisibleLayerInfo.layerDispFrame, VisibleLayerInfo.layerSourceCrop, VisibleLayerInfo.layerFocused);
             }
         }
 #endif
@@ -1745,6 +1751,8 @@ void QtiSurfaceFlingerExtension::qtiUpdateLayerState(int numLayers) {
         VisibleLayerInfo.layerName.clear();
         VisibleLayerInfo.layerSequence.clear();
         VisibleLayerInfo.layerDispFrame.clear();
+        VisibleLayerInfo.layerSourceCrop.clear();
+        VisibleLayerInfo.layerFocused.clear();
     }
 }
 
