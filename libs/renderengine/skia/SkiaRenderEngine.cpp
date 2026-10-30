@@ -1193,6 +1193,14 @@ void SkiaRenderEngine::drawLayersInternal(
                             [this, canvas, &blurRect,
                              &blurInput](const sk_sp<SkImage>& temporaryBlurredImage,
                                          const BlurRegion& region) {
+                                if (region.refraction > 0.0f) {
+                                    mBlurFilter->drawLiquidGlassRegion(
+                                            canvas, getBlurRRect(region), region.blurRadius,
+                                            region.alpha, blurRect, temporaryBlurredImage,
+                                            blurInput, region.refraction, region.bevel,
+                                            region.dispersion);
+                                    return;
+                                }
                                 mBlurFilter->drawBlurRegion(canvas, getBlurRRect(region),
                                                             region.blurRadius, 1.0f, region.alpha,
                                                             blurRect, temporaryBlurredImage,

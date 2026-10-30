@@ -208,6 +208,9 @@ status_t layer_state_t::write(Parcel& output) const
         SAFE_PARCEL(output.writeInt32, region.top);
         SAFE_PARCEL(output.writeInt32, region.right);
         SAFE_PARCEL(output.writeInt32, region.bottom);
+        SAFE_PARCEL(output.writeFloat, region.refraction);
+        SAFE_PARCEL(output.writeFloat, region.bevel);
+        SAFE_PARCEL(output.writeFloat, region.dispersion);
     }
 
     SAFE_PARCEL(output.write, stretchEffect);
@@ -399,6 +402,9 @@ status_t layer_state_t::read(const Parcel& input)
         SAFE_PARCEL(input.readInt32, &region.top);
         SAFE_PARCEL(input.readInt32, &region.right);
         SAFE_PARCEL(input.readInt32, &region.bottom);
+        SAFE_PARCEL(input.readFloat, &region.refraction);
+        SAFE_PARCEL(input.readFloat, &region.bevel);
+        SAFE_PARCEL(input.readFloat, &region.dispersion);
         blurRegions.push_back(region);
     }
 

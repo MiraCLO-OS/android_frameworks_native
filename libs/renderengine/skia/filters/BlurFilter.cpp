@@ -16,8 +16,10 @@
 
 #define ATRACE_TAG ATRACE_TAG_GRAPHICS
 #include "BlurFilter.h"
+#include <algorithm>
 #include <SkBlendMode.h>
 #include <SkCanvas.h>
+#include <SkM44.h>
 #include <SkPaint.h>
 #include <SkRRect.h>
 #include <SkRuntimeEffect.h>
@@ -42,6 +44,47 @@ const SkString kEffectSource_BlurFilter_MixEffect(R"(
 
     half4 main(float2 xy) {
         return half4(mix(originalInput.eval(xy), blurredInput.eval(xy), mixFactor)).rgb1;
+    }
+)");
+
+// MiraCLO Liquid Glass. A rounded rectangle (box = centre + half size, radius) of glass: near
+// its edge the content behind is pulled inwards along the edge normal following a circular
+// bevel, the three colour channels are pulled by slightly different amounts, and a thin rim
+// is lit from the top left. Inside the bevel the content is just the blurred input.
+const SkString kEffectSource_LiquidGlassEffect(R"(
+    uniform shader content;
+    uniform float4 box;
+    uniform float radius;
+    uniform float bevel;
+    uniform float strength;
+    uniform float dispersion;
+    uniform float rimWidth;
+
+    float sdBox(float2 p) {
+        float2 q = abs(p - box.xy) - box.zw + radius;
+        return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - radius;
+    }
+
+    half4 main(float2 p) {
+        float d = sdBox(p);
+        float2 n = float2(sdBox(p + float2(1.0, 0.0)) - sdBox(p - float2(1.0, 0.0)),
+                          sdBox(p + float2(0.0, 1.0)) - sdBox(p - float2(0.0, 1.0)));
+        float nl = length(n);
+        n = nl > 0.0001 ? n / nl : float2(0.0);
+        float inside = -d;
+        float t = clamp(1.0 - inside / bevel, 0.0, 1.0);
+        float h = 1.0 - sqrt(max(1.0 - t * t, 0.0));
+        float2 off = -n * h * strength * bevel;
+        half3 c;
+        c.r = content.eval(p + off * (1.0 + dispersion)).r;
+        c.g = content.eval(p + off).g;
+        c.b = content.eval(p + off * (1.0 - dispersion)).b;
+        float lam = dot(n, normalize(float2(-0.55, -0.85)));
+        float rim = smoothstep(rimWidth, 0.0, inside);
+        float spec = rim * (0.28 + 0.72 * pow(abs(lam), 1.6)) * 0.62;
+        float band = t * t * t * 0.10 * max(lam, 0.0);
+        c = clamp(c + half3(spec + band), 0.0, 1.0);
+        return half4(c, 1.0);
     }
 )");
 
@@ -71,22 +114,16 @@ static SkMatrix getShaderTransform(const SkCanvas* canvas, const SkRect& blurRec
 
 BlurFilter::BlurFilter(RuntimeEffectManager& effectManager, const float maxCrossFadeRadius)
       : mMaxCrossFadeRadius(maxCrossFadeRadius),
-        mMixEffect(effectManager.mKnownEffects[kBlurFilter_MixEffect]) {}
+        mMixEffect(effectManager.mKnownEffects[kBlurFilter_MixEffect]),
+        mLiquidGlassEffect(effectManager.mKnownEffects[kLiquidGlassEffect]) {}
 
 float BlurFilter::getMaxCrossFadeRadius() const {
     return mMaxCrossFadeRadius;
 }
 
-void BlurFilter::drawBlurRegion(SkCanvas* canvas, const SkRRect& effectRegion,
-                                const uint32_t blurRadius, const float zoomScale,
-                                const float blurAlpha,
-                                const SkRect& blurRect, sk_sp<SkImage> blurredImage,
-                                sk_sp<SkImage> input) {
-    SFTRACE_CALL();
-
-    SkPaint paint;
-    paint.setAlphaf(blurAlpha);
-
+sk_sp<SkShader> BlurFilter::makeBlurShader(SkCanvas* canvas, const uint32_t blurRadius,
+                                           const float zoomScale, const SkRect& blurRect,
+                                           sk_sp<SkImage> blurredImage, sk_sp<SkImage> input) {
     auto blurMatrix = getShaderTransform(canvas, blurRect, kInverseInputScale, zoomScale);
 
     SkSamplingOptions linearSampling(SkFilterMode::kLinear, SkMipmapMode::kNone);
@@ -117,10 +154,21 @@ void BlurFilter::drawBlurRegion(SkCanvas* canvas, const SkRRect& effectRegion,
 
         blurBuilder.uniform("mixFactor") = blurRadius / mMaxCrossFadeRadius;
 
-        paint.setShader(blurBuilder.makeShader());
-    } else {
-        paint.setShader(blurShader);
+        return blurBuilder.makeShader();
     }
+    return blurShader;
+}
+
+void BlurFilter::drawBlurRegion(SkCanvas* canvas, const SkRRect& effectRegion,
+                                const uint32_t blurRadius, const float zoomScale,
+                                const float blurAlpha,
+                                const SkRect& blurRect, sk_sp<SkImage> blurredImage,
+                                sk_sp<SkImage> input) {
+    SFTRACE_CALL();
+
+    SkPaint paint;
+    paint.setAlphaf(blurAlpha);
+    paint.setShader(makeBlurShader(canvas, blurRadius, zoomScale, blurRect, blurredImage, input));
 
     if (effectRegion.isRect()) {
         if (blurAlpha == 1.0f) {
@@ -131,6 +179,42 @@ void BlurFilter::drawBlurRegion(SkCanvas* canvas, const SkRRect& effectRegion,
         paint.setAntiAlias(true);
         canvas->drawRRect(effectRegion, paint);
     }
+}
+
+void BlurFilter::drawLiquidGlassRegion(SkCanvas* canvas, const SkRRect& effectRegion,
+                                       const uint32_t blurRadius, const float blurAlpha,
+                                       const SkRect& blurRect, sk_sp<SkImage> blurredImage,
+                                       sk_sp<SkImage> input, const float refraction,
+                                       const float bevel, const float dispersion) {
+    SFTRACE_CALL();
+    const SkRect& r = effectRegion.rect();
+    if (!mLiquidGlassEffect || r.isEmpty()) {
+        drawBlurRegion(canvas, effectRegion, blurRadius, 1.0f, blurAlpha, blurRect, blurredImage,
+                       input);
+        return;
+    }
+
+    const float halfW = r.width() / 2.0f;
+    const float halfH = r.height() / 2.0f;
+    const float radius = std::min(effectRegion.radii(SkRRect::kUpperLeft_Corner).x(),
+                                  std::min(halfW, halfH));
+    const float edge = std::max(1.0f, std::min(bevel, std::min(halfW, halfH)));
+
+    SkRuntimeShaderBuilder glass(mLiquidGlassEffect);
+    glass.child("content") =
+            makeBlurShader(canvas, blurRadius, 1.0f, blurRect, blurredImage, input);
+    glass.uniform("box") = SkV4{r.centerX(), r.centerY(), halfW, halfH};
+    glass.uniform("radius") = radius;
+    glass.uniform("bevel") = edge;
+    glass.uniform("strength") = refraction;
+    glass.uniform("dispersion") = dispersion;
+    glass.uniform("rimWidth") = std::max(1.5f, edge * 0.09f);
+
+    SkPaint paint;
+    paint.setAlphaf(blurAlpha);
+    paint.setAntiAlias(true);
+    paint.setShader(glass.makeShader());
+    canvas->drawRRect(effectRegion, paint);
 }
 
 } // namespace skia

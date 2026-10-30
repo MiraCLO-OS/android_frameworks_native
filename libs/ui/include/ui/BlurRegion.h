@@ -39,6 +39,11 @@ struct BlurRegion {
     int top;
     int right;
     int bottom;
+    // MiraCLO Liquid Glass: when refraction > 0 the region bends what is behind it near its
+    // edge. bevel is the width of that edge in pixels; dispersion splits the colours there.
+    float refraction = 0.0f;
+    float bevel = 0.0f;
+    float dispersion = 0.0f;
 
     inline bool operator==(const BlurRegion& other) const {
         return blurRadius == other.blurRadius && cornerRadiusTLX == other.cornerRadiusTLX &&
@@ -50,7 +55,8 @@ struct BlurRegion {
                 cornerRadiusBRX == other.cornerRadiusBRX &&
                 cornerRadiusBRY == other.cornerRadiusBRY && alpha == other.alpha &&
                 left == other.left && top == other.top && right == other.right &&
-                bottom == other.bottom;
+                bottom == other.bottom && refraction == other.refraction &&
+                bevel == other.bevel && dispersion == other.dispersion;
     }
 
     inline bool operator!=(const BlurRegion& other) const { return !(*this == other); }
@@ -81,6 +87,9 @@ static inline void PrintTo(const BlurRegion& blurRegion, ::std::ostream* os,
     *os << newline << ".top = " << blurRegion.top;
     *os << newline << ".right = " << blurRegion.right;
     *os << newline << ".bottom = " << blurRegion.bottom;
+    *os << newline << ".refraction = " << blurRegion.refraction;
+    *os << newline << ".bevel = " << blurRegion.bevel;
+    *os << newline << ".dispersion = " << blurRegion.dispersion;
     *os << IndentedNewline(currentIndent) << "}";
 }
 

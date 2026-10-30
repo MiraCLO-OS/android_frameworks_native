@@ -64,6 +64,17 @@ public:
                                 const float blurAlpha, const SkRect& blurRect,
                                 sk_sp<SkImage> blurredImage, sk_sp<SkImage> input);
 
+    /**
+     * MiraCLO Liquid Glass: like drawBlurRegion, but bends the blurred content near the edge of
+     * effectRegion (refraction), splits its colours there (dispersion) and lights the rim.
+     * bevel is the width of the bent edge in canvas pixels.
+     */
+    void drawLiquidGlassRegion(SkCanvas* canvas, const SkRRect& effectRegion,
+                               const uint32_t blurRadius, const float blurAlpha,
+                               const SkRect& blurRect, sk_sp<SkImage> blurredImage,
+                               sk_sp<SkImage> input, const float refraction, const float bevel,
+                               const float dispersion);
+
     float getMaxCrossFadeRadius() const;
 
     virtual void preallocateBuffers(SkiaGpuContext* context, ui::Size size) {}
@@ -72,12 +83,19 @@ public:
     }
 
 private:
+    sk_sp<SkShader> makeBlurShader(SkCanvas* canvas, const uint32_t blurRadius,
+                                   const float zoomScale, const SkRect& blurRect,
+                                   sk_sp<SkImage> blurredImage, sk_sp<SkImage> input);
+
     // To avoid downscaling artifacts, we interpolate the blurred fbo with the full composited
     // image, up to this radius.
     const float mMaxCrossFadeRadius;
 
     // Optional blend used for crossfade only if mMaxCrossFadeRadius > 0
     const sk_sp<SkRuntimeEffect> mMixEffect;
+
+    // MiraCLO Liquid Glass refraction pass.
+    const sk_sp<SkRuntimeEffect> mLiquidGlassEffect;
 };
 
 } // namespace skia
