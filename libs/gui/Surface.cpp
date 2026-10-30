@@ -2511,6 +2511,9 @@ int Surface::connect(int api, const sp<SurfaceListener>& listener, bool reportBu
 int Surface::disconnect(int api, IGraphicBufferProducer::DisconnectMode mode) {
     ATRACE_CALL();
     SURF_LOGV("Surface::disconnect");
+    if (mQtiSurfaceGPPExtn) {
+        mQtiSurfaceGPPExtn->Disconnect(api, &mGraphicBufferProducer);
+    }
     int err = mGraphicBufferProducer->disconnect(api, mode);
     if (err == BAD_VALUE) {
         SURF_LOGE("Surface failed to disconnect with error %d (%s). Likely the wrong API was "
@@ -2552,13 +2555,7 @@ int Surface::disconnect(int api, IGraphicBufferProducer::DisconnectMode mode) {
     if (api == NATIVE_WINDOW_API_CPU) {
         mConnectedToCpu = false;
     }
-// QTI_BEGIN: 2024-06-26: Video: gui: Introduce QTI Extensions in AOSP for Game Post Processing.
 
-    if (mQtiSurfaceGPPExtn) {
-        mQtiSurfaceGPPExtn->Disconnect(api, &mGraphicBufferProducer);
-    }
-
-// QTI_END: 2024-06-26: Video: gui: Introduce QTI Extensions in AOSP for Game Post Processing.
     std::scoped_lock _dl(mDebugMutex);
     // Keep the old name in case we get subsequent calls, for logging.
     mDebugName = mDebugName + "-DISCONNECTED";
